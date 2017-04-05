@@ -1,0 +1,18 @@
+<ivy-module version="2.0">
+	<info organisation="org.apache" module="marklogic-kinesis-connector"/>
+    <configurations>
+    <conf name="default"/>
+    <conf name="build" extends="default" visibility="private"/>
+    <conf name="test" extends="build" visibility="private"/>
+    <conf name="runtime" description="Additional run-time dependencies" extends="compile"/>
+    <conf name="test"    description="Required for test only" extends="runtime"/>
+    <conf name="compile" extends="default" />
+  </configurations>
+<dependencies>
+	<dependency org="log4j"  name="log4j" rev="1.2.17" conf="compile->default"/>
+</dependencies>
+</ivy-module>
+
+
+
+

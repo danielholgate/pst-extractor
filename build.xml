@@ -1,0 +1,119 @@
+<project xmlns:ivy="antlib:org.apache.ivy.ant" name="marklogic-kinesis-connector" basedir="." default="build">
+
+    <property name="version">1.2.3</property>
+    <property name="dir.src">src</property>
+	<property name="dir.lib">lib</property>
+    <property name="dir.build">build</property>
+    <property name="dir.build.classes">${dir.build}/classes</property>
+	<property name="dir.build.config">${dir.build}/config</property>
+	<property name="jar.filename">pst.jar</property>
+	<property name="main.class">com.marklogic.utilities.LoadPST</property>
+	<property name="dir.build.lib">${dir.build}/lib</property>
+    <property name="dir.build.javadoc">${dir.build}/javadoc</property>
+	<property name="ivy.install.version" value="2.1.0-rc2" />
+	<condition property="ivy.home" value="${env.IVY_HOME}">
+	   <isset property="env.IVY_HOME" />
+	</condition>
+	<property name="ivy.home" value="${user.home}/.ant" />
+	<property name="ivy.jar.dir" value="${ivy.home}/lib" />
+	<property name="ivy.jar.file" value="${ivy.jar.dir}/ivy.jar" />
+	
+	<!-- PROPERTIES FOR TEST TASK SENDING DATA TO KINESIS STREAM. CHANGE AS NEEDED -->
+	<property name="kinesis.stream.name" value="MyKinesisStreamName" />
+	<property name="kinesis.stream.region" value="ap-southeast-2" /> <!-- AWS Regions are here: http://docs.aws.amazon.com/general/latest/gr/rande.html#ak_region -->
+	<property name="kinesis.test.documents.type" value="XML" /> <!-- XML, JSON or TEXT -->
+	<property name="kinesis.test.documents.number" value="10" /> <!-- Number of test data to send -->
+
+	<target name="check-ivy">
+	    <available file="${ivy.jar.file}" property="ivy.present"/>
+	</target>
+	
+	 <target name="download-ivy" depends="check-ivy" unless="ivy.present">
+	        <mkdir dir="${ivy.jar.dir}"/>
+	 	    	<get src="https://repo1.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar" 
+	 	    		             dest="${ivy.jar.file}" usetimestamp="true"/> 
+	 	</target>
+
+	    <target name="setup" depends="download-ivy">
+	        <path id="ivy.lib.path">
+	            <fileset dir="${ivy.jar.dir}" includes="*.jar"/>
+	        </path>
+	        <taskdef resource="org/apache/ivy/ant/antlib.xml" uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path"/>
+	    </target>
+
+	<target name="resolve" description="Use ivy to resolve classpaths">
+		<ivy:retrieve />
+	</target>
+
+    <path id="projectClasspath">
+        <fileset dir="lib">
+            <include name="**.jar"/>
+        </fileset>
+    </path>
+
+    <target name="clean">
+        <delete dir="${dir.build}"/>
+    	<ivy:retrieve />
+    </target>
+	
+	<target name="clean-all" depends="clean">
+	   <ivy:cleancache/>
+	</target>
+
+    <target name="init" depends="clean, setup">
+        <mkdir dir="${dir.build}"/>
+        <mkdir dir="${dir.build.classes}"/>
+    </target>
+	
+	<target name="copy-dependencies">
+			<mkdir dir="${dir.build.lib}" />
+		
+		<copy todir="${dir.build.lib}">
+		    <fileset dir="lib"/>
+		  </copy>
+		
+		</target>
+
+    <target name="compile" depends="init,clean,resolve">
+        <echo>Compiling Java source</echo>
+    	
+    	<ivy:settings file="${ivy.home}/ivysettings.xml"/>
+    	<ivy:cachepath pathid="main.classpath" conf="compile"/>
+
+    	<mkdir dir="${dir.build.classes}"/>
+        <javac classpathref="projectClasspath" debug="true" source="1.8" target="1.8" srcdir="${dir.src}" destdir="${dir.build.classes}" />
+    </target>
+
+    <target name="jar" depends="compile">
+    	
+        <echo>Making JAR file ${dir.build}/${jar.filename}</echo>
+    	
+    	<manifestclasspath property="jar.classpath" jarfile="${dist.jar}">
+    	      <classpath>
+    	        <fileset dir="lib" includes="*.jar"/>
+    	      </classpath>
+    	</manifestclasspath>
+    	
+        <jar basedir="${dir.build.classes}" file="${dir.build}/${jar.filename}">
+    	<manifest>
+        	<attribute name="Main-Class" value="${main.class}"/>
+        	<attribute name="Class-Path" value="./java-libpst.jar ./java-mail-1.4.4.jar"/>
+    	</manifest>
+        </jar>
+    	
+    	<echo>COpying JAR file to ./testbed/pst.jar</echo>
+    	<copy file="${dir.build}/pst.jar" tofile="./testbed/pst.jar"/>
+    	    	    			   
+    	<!-- Remove class files -->
+    	<delete dir="${dir.build.classes}"/>
+    	
+    </target>
+	
+    <target name="build" depends="clean,compile,jar,copy-dependencies,jar"/>
+
+    <target name="javadoc">
+        <echo>Making JavaDoc from source</echo>
+        <javadoc sourcepath="${dir.src}" destdir="${dir.build.javadoc}"></javadoc>
+    </target>
+
+</project>
